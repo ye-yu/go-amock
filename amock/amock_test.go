@@ -9,7 +9,7 @@ func TestItReturn(t *testing.T) {
 	var ToMockReturn = func() int {
 		return 1
 	}
-	ItReturn(&ToMockReturn, 2)
+	ItReturns(&ToMockReturn, 2)
 
 	out := ToMockReturn()
 
@@ -20,7 +20,7 @@ func TestCallCount(t *testing.T) {
 	var ToMockReturn = func() int {
 		return 1
 	}
-	ItReturn(&ToMockReturn, 2)
+	ItReturns(&ToMockReturn, 2)
 
 	out := ToMockReturn()
 
