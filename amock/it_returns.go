@@ -1,5 +1,10 @@
 package amock
 
+import (
+	"fmt"
+	"reflect"
+)
+
 func ItReturns(fnPt interface{}, outs ...any) (e error) {
 	reflectedPointerValue := reflect.ValueOf(fnPt)
 	typeofFnPointer := reflectedPointerValue.Type()
