@@ -7,7 +7,7 @@
 To install `amock`, use the following `go get` command:
 
 ```
-go get github.com/ye-yu/amock
+go get github.com/ye-yu/go-amock/amock
 ```
 
 # 2. Usage
@@ -17,7 +17,7 @@ To use `amock`, you need to import the package in your Go code:
 ```go
 package project
 
-import "github.com/ye-yu/amock"
+import "github.com/ye-yu/go-amock/amock"
 ```
 
 Once you have imported `amock`, you can use its functions to monkey patch variables of type function.
