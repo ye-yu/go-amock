@@ -5,12 +5,19 @@ import (
 	"reflect"
 )
 
-type MockStorage struct {
+type MockedFunction struct {
 	fnPt            interface{}
 	originalElement interface{}
+	callCount       int
+	argsHistory     [][]interface{}
 }
 
-var MockedHistory = []MockStorage{}
+func (mf *MockedFunction) WasCalledWith(args []interface{}) {
+	mf.callCount += 1
+	mf.argsHistory = append(mf.argsHistory, args)
+}
+
+var MockedHistory = make(map[string]*MockedFunction)
 var ErrNotFunc = fmt.Errorf("received value is not a function")
 var ErrMismatchedOutParams = fmt.Errorf("out params for the function does not match")
 
@@ -21,25 +28,23 @@ func ItReturn(fnPt interface{}, outs ...any) (e error) {
 		e = fmt.Errorf("%w: %v", ErrNotFunc, fnPt)
 		return
 	}
+	ptAddy := fmt.Sprintf("%p", fnPt)
 
 	fn := reflectedPointerValue.Elem()
 	asInterface := fn.Interface()
 
-	// search for original value
-	var wasPreviouslyMocked = false
-	for _, storage := range MockedHistory {
-		if storage.fnPt == fnPt {
-			asInterface = storage.originalElement
-			wasPreviouslyMocked = true
-		}
-	}
+	var mockedFn *MockedFunction
 
-	// if it is not previously mocked, register in mock storage
-	if !wasPreviouslyMocked {
-		MockedHistory = append(MockedHistory, MockStorage{
+	// search for original value
+	if storage, wasPreviouslyMocked := MockedHistory[ptAddy]; wasPreviouslyMocked {
+		asInterface = storage.originalElement
+		mockedFn = storage
+	} else {
+		mockedFn = &MockedFunction{
 			fnPt:            fnPt,
 			originalElement: asInterface,
-		})
+		}
+		MockedHistory[ptAddy] = mockedFn
 	}
 
 	typeofFn := fn.Type()
@@ -64,21 +69,11 @@ func ItReturn(fnPt interface{}, outs ...any) (e error) {
 
 	newReflectedFnType := reflect.FuncOf(argTypes, outTypes, typeofFn.IsVariadic())
 	newReflectedFn := reflect.MakeFunc(newReflectedFnType, func(args []reflect.Value) (results []reflect.Value) {
-		//currentCount := context.fnCountIndex.Get(int(spyToken))
-		//context.fnCountIndex.Set(int(spyToken), currentCount+1)
-		//
-		//callHistoryStack := context.callingHistory.Get(int(spyToken))
-		//if callHistoryStack == nil {
-		//	callHistoryStack = [][]interface{}{}
-		//}
-		//argsStream := stream.OfSlice(args)
-		//callArgs := stream.Map(
-		//	argsStream,
-		//	func(it reflect.Value) interface{} {
-		//		return it.Interface()
-		//	},
-		//).ToSlice()
-		//callHistoryStack = append(callHistoryStack, callArgs)
+		callArgs := make([]interface{}, len(args))
+		for i, arg := range args {
+			callArgs[i] = arg.Interface()
+		}
+		mockedFn.WasCalledWith(callArgs)
 
 		results = make([]reflect.Value, len(outs))
 		for i := 0; i < len(outs); i++ {
@@ -89,5 +84,24 @@ func ItReturn(fnPt interface{}, outs ...any) (e error) {
 	})
 
 	reflectedPointerValue.Elem().Set(newReflectedFn)
+	return
+}
+
+func CallCount(fnPt interface{}) (count int, e error) {
+	reflectedPointerValue := reflect.ValueOf(fnPt)
+	typeofFnPointer := reflectedPointerValue.Type()
+	if typeofFnPointer.Kind() != reflect.Pointer {
+		e = fmt.Errorf("%w: %v", ErrNotFunc, fnPt)
+		return
+	}
+
+	ptAddy := fmt.Sprintf("%p", fnPt)
+
+	mockedFn, wasMocked := MockedHistory[ptAddy]
+	if !wasMocked {
+		return
+	}
+
+	count = mockedFn.callCount
 	return
 }
